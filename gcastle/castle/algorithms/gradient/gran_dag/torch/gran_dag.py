@@ -387,7 +387,10 @@ class GraNDAG(BaseLearner):
         else:
             raise NotImplementedError("optimizer {} is not implemented"
                                       .format(self.optimizer))
-
+        # ============ Jules' modification ============
+        loss_history = [] # redundant
+        adjacency_history = [] # redundant
+        # =============================================
         # Learning loop:
         for iter in tqdm(range(self.iterations), desc='Training Iterations'):
             # compute loss
@@ -492,6 +495,10 @@ class GraNDAG(BaseLearner):
                     self.model.adjacency *= to_keep
 
                 return self.model
+            # ============ Jules' modification ============
+            self.loss_history = aug_lagrangians
+            self.adjacency_history = w_adjs
+            # =============================================
 
     def _to_dag(self, train_data):
         """

@@ -203,12 +203,19 @@ class GOLEM(BaseLearner):
                            device=self.device)
 
         self.train_op = torch.optim.Adam(model.parameters(), lr=self.learning_rate)
-
+        # ================Jules' modification================
+        loss_history = []
+        adjacency_history = []
+        # ===================================================
         logging.info("Started training for {} iterations.".format(int(self.num_iter)))
         for i in range(0, int(self.num_iter) + 1):
             model(X)
             score, likelihood, h, B_est = model.score, model.likelihood, model.h, model.B
-            
+            # ================Jules' modification================
+            loss_history.append(score)
+            adj_matrix = postprocess(B_est.cpu().detach().numpy(), graph_thres=0.3)
+            adjacency_history.append(adj_matrix)
+            # ===================================================
             if i > 0:  # Do not train here, only perform evaluation
                 # Optimizer
                 self.loss = score
@@ -223,5 +230,8 @@ class GOLEM(BaseLearner):
         # Post-process estimated solution and compute results
         B_processed = postprocess(B_est.cpu().detach().numpy(), graph_thres=0.3)
         B_result = (B_processed != 0).astype(int)
-
+        # ================Jules' modification================
+        self.loss_history = loss_history
+        self.adjacency_history = adjacency_history
+        # ===================================================
         return B_result
