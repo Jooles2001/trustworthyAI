@@ -229,6 +229,12 @@ class DAG_GNN(BaseLearner):
         best_elbo_loss = np.inf
         origin_a = adj_A
         epoch = 0
+        ################################
+        # @Jules: Adding loss tracking #
+        ################################
+        elbo_loss_history = []
+        adj_A_history = []
+        ################################
         for step_k in range(self.k_max_iter):
             while c_a < self.c_a_thresh:
                 for epoch in range(self.epochs):
@@ -236,6 +242,13 @@ class DAG_GNN(BaseLearner):
                                                       optimizer=optimizer,
                                                       lambda_a=lambda_a,
                                                       c_a=c_a)
+                    ################################
+                    # @Jules: Adding loss tracking #
+                    ################################
+                    elbo_loss_history.append(elbo_loss)
+                    print(f"Epoch: {epoch}, elbo_loss: {elbo_loss}")
+                    adj_A_history.append(origin_a)
+                    ################################
                     if elbo_loss < best_elbo_loss:
                         best_elbo_loss = elbo_loss
                 if elbo_loss > 2 * best_elbo_loss:
@@ -259,6 +272,12 @@ class DAG_GNN(BaseLearner):
         origin_a[np.abs(origin_a) < self.graph_threshold] = 0
         origin_a[np.abs(origin_a) >= self.graph_threshold] = 1
 
+        ################################
+        # @Jules: Adding loss tracking #
+        ################################
+        self.elbo_loss_history = elbo_loss_history
+        self.adj_A_history = adj_A_history
+        ################################
         self.causal_matrix = Tensor(origin_a, index=columns, columns=columns)
 
     def _train(self, train_loader, optimizer, lambda_a, c_a):

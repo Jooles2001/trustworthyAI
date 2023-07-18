@@ -90,6 +90,9 @@ class Notears(BaseLearner):
         self.h_tol = h_tol
         self.rho_max = rho_max
         self.w_threshold = w_threshold
+        # ====== Jules' modification ======
+        self.tracking = True # NOTE: change to instance variable
+        # =================================
 
     def learn(self, data, columns=None, **kwargs):
         """
@@ -110,6 +113,11 @@ class Notears(BaseLearner):
                                     max_iter=self.max_iter, 
                                     h_tol=self.h_tol, 
                                     rho_max=self.rho_max)
+        # ====== Jules' modification ======
+        W_est, loss_hist, adj_hist = W_est
+        self.loss_history = loss_hist
+        self.adjacency_history = adj_hist
+        # =================================
         causal_matrix = (abs(W_est) > self.w_threshold).astype(int)
         self.weight_causal_matrix = Tensor(W_est,
                                            index=X.columns,
@@ -177,6 +185,7 @@ class Notears(BaseLearner):
             """
             W = _adj(w)
             loss, G_loss = _loss(W)
+            
             h, G_h = _h(W)
             obj = loss + 0.5 * rho * h * h + alpha * h + lambda1 * w.sum()
             G_smooth = G_loss + (rho * h + alpha) * G_h
@@ -194,7 +203,10 @@ class Notears(BaseLearner):
         
         logging.info('[start]: n={}, d={}, iter_={}, h_={}, rho_={}'.format( \
                     n, d, max_iter, h_tol, rho_max))
-
+        # ==========Jules' modification==========
+        loss_history : list = []
+        adj_history : list = []
+        # =======================================
         for i in range(max_iter):
             w_new, h_new = None, None
             while rho < rho_max:
@@ -202,7 +214,10 @@ class Notears(BaseLearner):
                                     jac=True, bounds=bnds)
                 w_new = sol.x
                 h_new, _ = _h(_adj(w_new))
-                
+                # ==========Jules' modification==========
+                loss_history.append(_func(w_est)[0])
+                adj_history.append(_adj(w_est))
+                # =======================================
                 logging.info(
                     '[iter {}] h={:.3e}, loss={:.3f}, rho={:.1e}'.format( \
                     i, h_new, _func(w_est)[0], rho))
@@ -220,5 +235,8 @@ class Notears(BaseLearner):
         W_est = _adj(w_est)
 
         logging.info('FINISHED')
-
+        # ==========Jules' modification==========
+        if self.tracking:
+            return W_est, loss_history, adj_history
+        # =======================================
         return W_est

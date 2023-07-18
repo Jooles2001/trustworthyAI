@@ -116,7 +116,7 @@ class MCSL(BaseLearner):
                  max_iter=25, iter_step=1000, init_iter=2, h_tol=1e-10,
                  init_rho=1e-5, rho_thresh=1e14, h_thresh=0.25,
                  rho_multiply=10, temperature=0.2, device_type='cpu',
-                 device_ids='0', random_seed=1230) -> None:
+                 device_ids='0', random_seed=1230, track_loss=False) -> None:
         super(MCSL, self).__init__()
 
         self.model_type = model_type
@@ -137,6 +137,7 @@ class MCSL(BaseLearner):
         self.device_type = device_type
         self.device_ids = device_ids
         self.random_seed = random_seed
+        self.track_loss = track_loss
 
         if torch.cuda.is_available():
             logging.info('GPU is available.')
@@ -221,11 +222,16 @@ class MCSL(BaseLearner):
                           init_iter=self.init_iter,
                           h_tol=self.h_tol,
                           temperature=self.temperature,
+                          graph_thresh=self.graph_thresh,
                           device=self.device)
 
         if not isinstance(x, torch.Tensor):
             x = torch.tensor(x, device=self.device)
-        w_logits = trainer.train(x, self.max_iter, self.iter_step)
+        w_logits = trainer.train(x, self.max_iter, self.iter_step, self.track_loss)  # @Jules 12/07/2023: added the two tracking terms
+        if self.track_loss:
+            w_logits, adjmat_hist, loss_hist = w_logits
+            self.adjmat_history = adjmat_hist
+            self.loss_history = loss_hist
 
         w_est, w_est_weight = callback_after_training(w_logits,
                                                       self.temperature,

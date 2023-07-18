@@ -17,9 +17,10 @@ import logging
 import numpy as np
 import torch
 
-from ..helpers.utils import compute_acyclicity, convert_logits_to_sigmoid
+from ..helpers.utils import compute_acyclicity, convert_logits_to_sigmoid, callback_after_training
 from castle.common.consts import LOG_FREQUENCY, LOG_FORMAT
 
+from typing import Tuple # @Jules 11/07/2023: manually add this line
 
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
@@ -30,7 +31,7 @@ class Trainer(object):
     """
 
     def __init__(self, model, learning_rate, init_rho, rho_thresh, h_thresh,
-                 rho_multiply, init_iter, h_tol, temperature,
+                 rho_multiply, init_iter, h_tol, temperature, graph_thresh=0.5,
                  device=None) -> None:
         self.model = model
         self.learning_rate = learning_rate
@@ -42,11 +43,12 @@ class Trainer(object):
         self.h_tol = h_tol
         self.temperature = torch.tensor(temperature, device=device)
         self.device = device
+        self.graph_thresh = graph_thresh
 
         self.optimizer = torch.optim.Adam(self.model.parameters(),
                                           lr=self.learning_rate,)
 
-    def train(self, x, max_iter, iter_step) -> torch.Tensor:
+    def train(self, x, max_iter, iter_step, track_loss_history=True) -> torch.Tensor | Tuple[torch.Tensor, list[torch.Tensor], list[float]]:
         """"""
 
         rho = self.init_rho
@@ -54,12 +56,15 @@ class Trainer(object):
         h_new = np.inf
         alpha = 0.0
         w_logits_new = None
+        adjmat_history = []  # @Jules 12/07/2023: track adjacency matrix history
+        loss_history = []  # @Jules 12/07/2023: track loss history
         for i in range(1, max_iter + 1):
             logging.info(f'Current epoch: {i}==================')
             while rho < self.rho_thresh:
                 loss_new, h_new, w_logits_new = self.train_step(
                     x, iter_step, rho, alpha, self.temperature
                 )
+                loss_history.append(loss_new.detach().cpu().numpy())  # @Jules 12/07/2023: track loss history
                 if h_new > self.h_thresh * h:
                     rho *= self.rho_multiply
                 else:
@@ -78,7 +83,15 @@ class Trainer(object):
             # Update h and alpha
             h = h_new.detach().cpu()
             alpha += rho * h
-
+            
+            # @Jules 11/07/2023: Additional loggings
+            logging.info(f'Current rho: {rho}==================')
+            current_adjmat = callback_after_training(w_logits_new, self.temperature, self.graph_thresh)[0] # @Jules 11/07/2023 : w_logits_new is the adjacency matrix
+            adjmat_history.append(current_adjmat) # @Jules 12/07/2023: track adjacency matrix history
+            logging.info(f'Current adjacency matrix: \n {current_adjmat}==================') # @Jules 11/07/2023 : adjacency matrix
+            
+        if track_loss_history:
+            return w_logits_new, adjmat_history, loss_history
         return w_logits_new
 
     def train_step(self, x, iter_step, rho, alpha, temperature) -> tuple:
