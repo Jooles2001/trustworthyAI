@@ -228,11 +228,12 @@ class MCSL(BaseLearner):
         if not isinstance(x, torch.Tensor):
             x = torch.tensor(x, device=self.device)
         w_logits = trainer.train(x, self.max_iter, self.iter_step, self.track_loss)  # @Jules 12/07/2023: added the two tracking terms
+        # ============= Jules' modification =============
         if self.track_loss:
             w_logits, adjmat_hist, loss_hist = w_logits
             self.adjmat_history = adjmat_hist
             self.loss_history = loss_hist
-
+        # ===============================================
         w_est, w_est_weight = callback_after_training(w_logits,
                                                       self.temperature,
                                                       self.graph_thresh)
