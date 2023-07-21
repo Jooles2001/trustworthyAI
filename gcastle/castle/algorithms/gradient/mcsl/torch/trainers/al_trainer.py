@@ -48,7 +48,7 @@ class Trainer(object):
         self.optimizer = torch.optim.Adam(self.model.parameters(),
                                           lr=self.learning_rate,)
 
-    def train(self, x, max_iter, iter_step, track_loss_history=True) -> torch.Tensor | Tuple[torch.Tensor, list[torch.Tensor], list[float]]:
+    def train(self, x, max_iter, iter_step) -> torch.Tensor | Tuple[torch.Tensor, list[torch.Tensor], list[float]]:
         """"""
 
         rho = self.init_rho
@@ -90,7 +90,7 @@ class Trainer(object):
             adjmat_history.append(current_adjmat) # @Jules 12/07/2023: track adjacency matrix history
             logging.info(f'Current adjacency matrix: \n {current_adjmat}==================') # @Jules 11/07/2023 : adjacency matrix
             
-        if track_loss_history:
+        if True: # @Jules 12/07/2023: track loss history
             return w_logits_new, adjmat_history, loss_history
         return w_logits_new
 

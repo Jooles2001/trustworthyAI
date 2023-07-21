@@ -220,7 +220,7 @@ class GraNDAG(BaseLearner):
                  square_prod=False):
         super(GraNDAG, self).__init__()
 
-        self.input_dim = input_dim
+        self.input_dim = input_dim  # @Jules: I am sure we can get this from the data rather than having to specify it
         self.hidden_num = hidden_num
         self.hidden_dim = hidden_dim
         self.batch_size = batch_size
@@ -496,8 +496,8 @@ class GraNDAG(BaseLearner):
 
                 return self.model
             # ============ Jules' modification ============
-            self.loss_history = aug_lagrangians
-            self.adjacency_history = w_adjs
+            self.loss_history = aug_lagrangians  # the loss history is the augmented lagrangian if I understand correctly
+            self.adjacency_history = w_adjs  # not exactly the adjacency since there is a `_to_dag` step after (which is not included here)
             # =============================================
 
     def _to_dag(self, train_data):

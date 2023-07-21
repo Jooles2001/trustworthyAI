@@ -237,7 +237,7 @@ class GraNDAG(BaseLearner):
                  square_prod=False):
         super(GraNDAG, self).__init__()
 
-        self.input_dim = input_dim
+        self.input_dim = input_dim  # @Jules: I am certain we can get this from the data and not from the user
         self.hidden_num = hidden_num
         self.hidden_dim = hidden_dim
         self.batch_size = batch_size

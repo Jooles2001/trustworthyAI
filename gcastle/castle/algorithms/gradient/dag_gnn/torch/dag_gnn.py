@@ -246,7 +246,7 @@ class DAG_GNN(BaseLearner):
                     # @Jules: Adding loss tracking #
                     ################################
                     elbo_loss_history.append(elbo_loss)
-                    print(f"Epoch: {epoch}, elbo_loss: {elbo_loss}")
+                    # print(f"Epoch: {epoch}, elbo_loss: {elbo_loss}")
                     adj_A_history.append(origin_a)
                     ################################
                     if elbo_loss < best_elbo_loss:
@@ -275,8 +275,8 @@ class DAG_GNN(BaseLearner):
         ################################
         # @Jules: Adding loss tracking #
         ################################
-        self.elbo_loss_history = elbo_loss_history
-        self.adj_A_history = adj_A_history
+        self.loss_history = elbo_loss_history
+        self.adjacency_history = adj_A_history
         ################################
         self.causal_matrix = Tensor(origin_a, index=columns, columns=columns)
 
