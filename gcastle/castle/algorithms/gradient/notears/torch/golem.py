@@ -212,7 +212,8 @@ class GOLEM(BaseLearner):
             model(X)
             score, likelihood, h, B_est = model.score, model.likelihood, model.h, model.B
             # ================Jules' modification================
-            loss_history.append(score)
+            print(f"[Iter {i}] score={score:.3f}, likelihood={likelihood:.3f}, h={h:.1e}") if i%10_000==0 else None # verbose
+            loss_history.append(score.item())
             adj_matrix = postprocess(B_est.cpu().detach().numpy(), graph_thres=0.3)
             adjacency_history.append(adj_matrix)
             # ===================================================

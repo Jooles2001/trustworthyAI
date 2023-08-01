@@ -247,7 +247,7 @@ class DAG_GNN(BaseLearner):
                     ################################
                     elbo_loss_history.append(elbo_loss)
                     # print(f"Epoch: {epoch}, elbo_loss: {elbo_loss}")
-                    adj_A_history.append(origin_a)
+                    adj_A_history.append(origin_a.detach().cpu().numpy())
                     ################################
                     if elbo_loss < best_elbo_loss:
                         best_elbo_loss = elbo_loss

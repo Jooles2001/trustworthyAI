@@ -64,7 +64,8 @@ class Trainer(object):
                 loss_new, h_new, w_logits_new = self.train_step(
                     x, iter_step, rho, alpha, self.temperature
                 )
-                loss_history.append(loss_new.detach().cpu().numpy())  # @Jules 12/07/2023: track loss history
+                loss_history.append(loss_new.detach().cpu().numpy().item())  # @Jules 12/07/2023: track loss history
+                print(f"loss : {loss_history[-1]:4f}\trho :  {rho:.4f}")  
                 if h_new > self.h_thresh * h:
                     rho *= self.rho_multiply
                 else:
@@ -87,7 +88,7 @@ class Trainer(object):
             # @Jules 11/07/2023: Additional loggings
             logging.info(f'Current rho: {rho}==================')
             current_adjmat = callback_after_training(w_logits_new, self.temperature, self.graph_thresh)[0] # @Jules 11/07/2023 : w_logits_new is the adjacency matrix
-            adjmat_history.append(current_adjmat) # @Jules 12/07/2023: track adjacency matrix history
+            adjmat_history.append(current_adjmat.cpu().detach().numpy()) # @Jules 12/07/2023: track adjacency matrix history
             logging.info(f'Current adjacency matrix: \n {current_adjmat}==================') # @Jules 11/07/2023 : adjacency matrix
             
         if True: # @Jules 12/07/2023: track loss history
