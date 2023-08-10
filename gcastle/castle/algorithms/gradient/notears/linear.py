@@ -92,6 +92,8 @@ class Notears(BaseLearner):
         self.w_threshold = w_threshold
         # ====== Jules' modification ======
         self.tracking = True # NOTE: change to instance variable
+        from castle.algorithms.gradient.early_stop import EarlyStopper
+        self.early_stopper = EarlyStopper(patience=5, min_delta=1e-4)
         # =================================
 
     def learn(self, data, columns=None, **kwargs):
@@ -216,6 +218,7 @@ class Notears(BaseLearner):
                 h_new, _ = _h(_adj(w_new))
                 # ==========Jules' modification==========
                 loss_history.append(_func(w_est)[0])
+                self.early_stopper(loss_history[-1])
                 adj_history.append(_adj(w_est))
                 # =======================================
                 logging.info(
@@ -231,7 +234,11 @@ class Notears(BaseLearner):
 
             if h <= h_tol or rho >= rho_max:
                 break
-
+            # ==========Jules' modification==========
+            if self.early_stopper.early_stop:
+                logging.info('Early stopping at iteration {}'.format(i))
+                break
+            # =======================================
         W_est = _adj(w_est)
 
         logging.info('FINISHED')

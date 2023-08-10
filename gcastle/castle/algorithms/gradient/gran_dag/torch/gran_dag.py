@@ -247,6 +247,9 @@ class GraNDAG(BaseLearner):
         self.edge_clamp_range = edge_clamp_range
         self.norm_prod = norm_prod
         self.square_prod = square_prod
+        # ===== @Jules: EarlyStopping =====
+        from castle.algorithms.gradient.early_stop import EarlyStopper
+        self.early_stopper = EarlyStopper(patience=8, min_delta=0.0)
 
     def learn(self, data, columns=None, **kwargs):
         """Set up and run the Gran-DAG algorithm
@@ -446,7 +449,10 @@ class GraNDAG(BaseLearner):
                                                                  extra_params))
                     nlls_val.append(loss_val.item())
                     aug_lagrangians_val.append([iter, loss_val + not_nlls[-1]])
-
+                # ============ Jules' modification ============
+                self.early_stopper(loss_val + not_nlls[-1])
+                # =============================================
+                
             # compute delta for lambda
             if iter >= 2 * self.stop_crit_win \
                     and iter % (2 * self.stop_crit_win) == 0:
@@ -498,6 +504,9 @@ class GraNDAG(BaseLearner):
             # ============ Jules' modification ============
             self.loss_history = aug_lagrangians  # the loss history is the augmented lagrangian if I understand correctly
             self.adjacency_history = w_adjs  # not exactly the adjacency since there is a `_to_dag` step after (which is not included here)
+            if self.early_stopper.early_stop:
+                print("Early stopping")
+                break
             # =============================================
 
     def _to_dag(self, train_data):

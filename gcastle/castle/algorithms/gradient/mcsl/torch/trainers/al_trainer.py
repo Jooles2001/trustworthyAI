@@ -58,14 +58,22 @@ class Trainer(object):
         w_logits_new = None
         adjmat_history = []  # @Jules 12/07/2023: track adjacency matrix history
         loss_history = []  # @Jules 12/07/2023: track loss history
+        # ==================== #
+        from castle.algorithms.gradient.early_stop import EarlyStopper
+        self.early_stopper = EarlyStopper(patience=5, min_delta=1e-4)
+        # ==================== #
+        
         for i in range(1, max_iter + 1):
             logging.info(f'Current epoch: {i}==================')
             while rho < self.rho_thresh:
-                loss_new, h_new, w_logits_new = self.train_step(
+                loss_new, h_new, w_logits_new, history = self.train_step(
                     x, iter_step, rho, alpha, self.temperature
                 )
-                loss_history.append(loss_new.detach().cpu().numpy().item())  # @Jules 12/07/2023: track loss history
-                print(f"loss : {loss_history[-1]:4f}\trho :  {rho:.4f}")  
+                # ==================== #
+                # loss_history.append(loss_new.detach().cpu().numpy().item())  # @Jules 12/07/2023: track loss history
+                loss_history.extend(history)  # @Jules 12/07/2023: track loss history
+                print(f"loss : {loss_history[-1]:4f}\trho :  {rho:.4f}")
+                # ==================== #
                 if h_new > self.h_thresh * h:
                     rho *= self.rho_multiply
                 else:
@@ -99,6 +107,8 @@ class Trainer(object):
 
         # curr_loss, curr_mse and curr_h are single-sample estimation
         curr_loss, curr_h, curr_w = None, None, None
+        self.early_stopper.reset()  # @Jules 12/07/2023: reset early stopper
+        history = []  # @Jules 12/07/2023: track loss history
         for _ in range(iter_step):
 
             (curr_loss, curr_h, curr_w) = self.model(x, rho, alpha, temperature)
@@ -106,8 +116,8 @@ class Trainer(object):
             self.optimizer.zero_grad()
             curr_loss.backward()
             self.optimizer.step()
-
+            history.append(curr_loss.detach().cpu().numpy().item())  # @Jules 12/07/2023: track loss history
             if _ % LOG_FREQUENCY == 0:
                 logging.info(f'Current loss in step {_}: {curr_loss.detach()}')
 
-        return curr_loss, curr_h, curr_w
+        return curr_loss, curr_h, curr_w, history

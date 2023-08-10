@@ -177,6 +177,10 @@ class DAG_GNN(BaseLearner):
         self.device = device
 
         self.input_dim = None
+        # ===== @Jules: add early stop =====
+        from castle.algorithms.gradient.early_stop import EarlyStopper
+        self.early_stopper = EarlyStopper(patience=8, min_delta=0.0)
+        # ==================================
 
     def learn(self, data, columns=None, **kwargs):
 
@@ -248,11 +252,17 @@ class DAG_GNN(BaseLearner):
                     elbo_loss_history.append(elbo_loss)
                     # print(f"Epoch: {epoch}, elbo_loss: {elbo_loss}")
                     adj_A_history.append(origin_a.detach().cpu().numpy())
+                    self.early_stopper(elbo_loss)
                     ################################
                     if elbo_loss < best_elbo_loss:
                         best_elbo_loss = elbo_loss
                 if elbo_loss > 2 * best_elbo_loss:
                     break
+                # ===== @Jules: add early stop =====
+                if self.early_stopper.early_stop:
+                    logging.info("Early stopping")
+                    break
+                # ==================================
                 # update parameters
                 a_new = origin_a.detach().clone()
                 h_a_new = func._h_A(a_new, self.n_nodes)
