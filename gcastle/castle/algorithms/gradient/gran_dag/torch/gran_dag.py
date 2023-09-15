@@ -248,7 +248,7 @@ class GraNDAG(BaseLearner):
         self.norm_prod = norm_prod
         self.square_prod = square_prod
         # ===== @Jules: EarlyStopping =====
-        from castle.algorithms.gradient.early_stop import EarlyStopper
+        from trustworthyAI.gcastle.castle.algorithms.gradient.early_stop import EarlyStopper
         self.early_stopper = EarlyStopper(patience=8, min_delta=0.0)
 
     def learn(self, data, columns=None, **kwargs):

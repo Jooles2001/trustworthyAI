@@ -26,6 +26,8 @@ from .anm import ANMNonlinear
 from .gradient.notears import Notears
 from .gradient.notears import NotearsLowRank
 
+from .gradient.early_stop import EarlyStopper 
+
 from ..backend import backend, logging
 
 if backend == 'pytorch':

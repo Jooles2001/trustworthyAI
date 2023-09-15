@@ -131,7 +131,7 @@ class GOLEM(BaseLearner):
             device = torch.device('cpu')
         self.device = device
         # ==================== #
-        from castle.algorithms.gradient.early_stop import EarlyStopper
+        from trustworthyAI.gcastle.castle.algorithms.gradient.early_stop import EarlyStopper
         self.early_stopper = EarlyStopper(patience=5, min_delta=1e-4)
         # ==================== #
 
@@ -216,7 +216,7 @@ class GOLEM(BaseLearner):
             model(X)
             score, likelihood, h, B_est = model.score, model.likelihood, model.h, model.B
             # ================Jules' modification================
-            print(f"[Iter {i}] score={score:.3f}, likelihood={likelihood:.3f}, h={h:.1e}") if i%10_000==0 else None # verbose
+            print(f"[Iter {i}] score={score:.3f}, likelihood={likelihood:.3f}, h={h:.1e}") if i%5_000==0 else None # verbose
             loss_history.append(score.item())
             adj_matrix = postprocess(B_est.cpu().detach().numpy(), graph_thres=0.3)
             adjacency_history.append(adj_matrix)
@@ -232,9 +232,9 @@ class GOLEM(BaseLearner):
                 logging.info("[Iter {}] score={:.3f}, likelihood={:.3f}, h={:.1e}".format( \
                     i, score, likelihood, h))
                 
-            self.early_stopper(score)
+            self.early_stopper(score.item())
             if self.early_stopper.early_stop:
-                logging.info("Early stopping at iteration {}.".format(i))
+                print("Early stopping at iteration {}.".format(i))
                 break
 
         # Post-process estimated solution and compute results

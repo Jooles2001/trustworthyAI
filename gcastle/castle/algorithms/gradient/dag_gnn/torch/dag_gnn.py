@@ -178,7 +178,7 @@ class DAG_GNN(BaseLearner):
 
         self.input_dim = None
         # ===== @Jules: add early stop =====
-        from castle.algorithms.gradient.early_stop import EarlyStopper
+        from trustworthyAI.gcastle.castle.algorithms.gradient.early_stop import EarlyStopper
         self.early_stopper = EarlyStopper(patience=8, min_delta=0.0)
         # ==================================
 
@@ -240,7 +240,9 @@ class DAG_GNN(BaseLearner):
         adj_A_history = []
         ################################
         for step_k in range(self.k_max_iter):
+            print("="*20, f"step_k: {step_k}", "="*20) if step_k%10==0 else None
             while c_a < self.c_a_thresh:
+                print(f"lambda_a: {lambda_a}, c_a: {c_a}")
                 for epoch in range(self.epochs):
                     elbo_loss, origin_a = self._train(train_loader=train_loader,
                                                       optimizer=optimizer,
@@ -250,7 +252,7 @@ class DAG_GNN(BaseLearner):
                     # @Jules: Adding loss tracking #
                     ################################
                     elbo_loss_history.append(elbo_loss)
-                    # print(f"Epoch: {epoch}, elbo_loss: {elbo_loss}")
+                    print(f"Epoch: {epoch}, elbo_loss: {elbo_loss}") if epoch%25==0 else None
                     adj_A_history.append(origin_a.detach().cpu().numpy())
                     self.early_stopper(elbo_loss)
                     ################################
@@ -258,11 +260,7 @@ class DAG_GNN(BaseLearner):
                         best_elbo_loss = elbo_loss
                 if elbo_loss > 2 * best_elbo_loss:
                     break
-                # ===== @Jules: add early stop =====
-                if self.early_stopper.early_stop:
-                    logging.info("Early stopping")
-                    break
-                # ==================================
+                
                 # update parameters
                 a_new = origin_a.detach().clone()
                 h_a_new = func._h_A(a_new, self.n_nodes)
@@ -270,6 +268,7 @@ class DAG_GNN(BaseLearner):
                     c_a *= self.eta  # eta
                 else:
                     break
+                
             # update parameters
             # h_A, adj_A are computed in loss anyway, so no need to store
             h_a_old = h_a_new.item()
@@ -277,7 +276,11 @@ class DAG_GNN(BaseLearner):
             lambda_a += c_a * h_a_new.item()
             if h_a_old <= self.h_tolerance:
                 break
-
+            # ===== @Jules: add early stop =====
+            if self.early_stopper.early_stop:
+                print("Early stopping at iteration", step_k)
+                break
+            # ==================================
         origin_a = origin_a.detach().cpu().numpy()
         origin_a[np.abs(origin_a) < self.graph_threshold] = 0
         origin_a[np.abs(origin_a) >= self.graph_threshold] = 1

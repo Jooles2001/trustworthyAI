@@ -59,20 +59,23 @@ class Trainer(object):
         adjmat_history = []  # @Jules 12/07/2023: track adjacency matrix history
         loss_history = []  # @Jules 12/07/2023: track loss history
         # ==================== #
-        from castle.algorithms.gradient.early_stop import EarlyStopper
+        from trustworthyAI.gcastle.castle.algorithms.gradient.early_stop import EarlyStopper
         self.early_stopper = EarlyStopper(patience=5, min_delta=1e-4)
         # ==================== #
         
         for i in range(1, max_iter + 1):
             logging.info(f'Current epoch: {i}==================')
             while rho < self.rho_thresh:
-                loss_new, h_new, w_logits_new, history = self.train_step(
+                loss_new, h_new, w_logits_new, history, all_adj = self.train_step(
                     x, iter_step, rho, alpha, self.temperature
                 )
                 # ==================== #
                 # loss_history.append(loss_new.detach().cpu().numpy().item())  # @Jules 12/07/2023: track loss history
                 loss_history.extend(history)  # @Jules 12/07/2023: track loss history
                 print(f"loss : {loss_history[-1]:4f}\trho :  {rho:.4f}")
+                for adj in all_adj:
+                    current_adjmat = callback_after_training(adj, self.temperature, self.graph_thresh)[0] # @Jules 11/07/2023 : w_logits_new is the adjacency matrix
+                    adjmat_history.append(current_adjmat.cpu().detach().numpy()) # @Jules 12/07/2023: track adjacency matrix history
                 # ==================== #
                 if h_new > self.h_thresh * h:
                     rho *= self.rho_multiply
@@ -95,8 +98,6 @@ class Trainer(object):
             
             # @Jules 11/07/2023: Additional loggings
             logging.info(f'Current rho: {rho}==================')
-            current_adjmat = callback_after_training(w_logits_new, self.temperature, self.graph_thresh)[0] # @Jules 11/07/2023 : w_logits_new is the adjacency matrix
-            adjmat_history.append(current_adjmat.cpu().detach().numpy()) # @Jules 12/07/2023: track adjacency matrix history
             logging.info(f'Current adjacency matrix: \n {current_adjmat}==================') # @Jules 11/07/2023 : adjacency matrix
             
         if True: # @Jules 12/07/2023: track loss history
@@ -109,6 +110,7 @@ class Trainer(object):
         curr_loss, curr_h, curr_w = None, None, None
         self.early_stopper.reset()  # @Jules 12/07/2023: reset early stopper
         history = []  # @Jules 12/07/2023: track loss history
+        all_adj = []
         for _ in range(iter_step):
 
             (curr_loss, curr_h, curr_w) = self.model(x, rho, alpha, temperature)
@@ -117,7 +119,8 @@ class Trainer(object):
             curr_loss.backward()
             self.optimizer.step()
             history.append(curr_loss.detach().cpu().numpy().item())  # @Jules 12/07/2023: track loss history
+            all_adj.append(curr_w)
             if _ % LOG_FREQUENCY == 0:
                 logging.info(f'Current loss in step {_}: {curr_loss.detach()}')
 
-        return curr_loss, curr_h, curr_w, history
+        return curr_loss, curr_h, curr_w, history, all_adj

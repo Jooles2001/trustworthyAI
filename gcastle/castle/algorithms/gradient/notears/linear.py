@@ -92,7 +92,7 @@ class Notears(BaseLearner):
         self.w_threshold = w_threshold
         # ====== Jules' modification ======
         self.tracking = True # NOTE: change to instance variable
-        from castle.algorithms.gradient.early_stop import EarlyStopper
+        from trustworthyAI.gcastle.castle.algorithms.gradient.early_stop import EarlyStopper
         self.early_stopper = EarlyStopper(patience=5, min_delta=1e-4)
         # =================================
 
@@ -217,8 +217,9 @@ class Notears(BaseLearner):
                 w_new = sol.x
                 h_new, _ = _h(_adj(w_new))
                 # ==========Jules' modification==========
-                loss_history.append(_func(w_est)[0])
-                self.early_stopper(loss_history[-1])
+                loss_new = _func(w_est)[0].item()
+                loss_history.append(loss_new)
+                self.early_stopper(loss_new)
                 adj_history.append(_adj(w_est))
                 # =======================================
                 logging.info(

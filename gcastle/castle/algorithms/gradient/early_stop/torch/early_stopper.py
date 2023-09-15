@@ -1,5 +1,6 @@
 import numpy as np
-
+import torch
+from trustworthyAI.gcastle.castle.common.base import Tensor
 # inspired by answers on : https://stackoverflow.com/questions/71998978/early-stopping-in-pytorch
 
 
@@ -16,18 +17,24 @@ class EarlyStopper:
         self.window : int = window
         self._loss_history : list[float] = []
         self.max_amplitude : float = np.max([max_amplitude, 0.0])
+        self.counter : int = 0
 
     def __str__(self) -> str:
         return f"EarlyStopper(patience={self.patience}, min_delta={self.min_delta}, window={self.window}, max_amplitude={self.max_amplitude})"
     
     def __call__(self, validation_loss):
         if not isinstance(validation_loss, float):
-            if isinstance(validation_loss, [np.ndarray, list]):
+            if isinstance(validation_loss, (np.ndarray, list)):
                 raise NotImplementedError("EarlyStopper does not yet support np.ndarray or list")
+            elif isinstance(validation_loss, (torch.Tensor, Tensor)):
+                validation_loss = validation_loss.item()
             else:
-                raise TypeError(f"Expected float, got {type(validation_loss)}")
+                try:
+                    validation_loss = float(validation_loss)
+                except:
+                    raise TypeError(f"Expected float, got {type(validation_loss)}")
         if validation_loss is not None:
-            self._early_stop = self.update(validation_loss)
+            self.update(validation_loss)
 
     @property
     def early_stop(self):
@@ -52,12 +59,19 @@ class EarlyStopper:
         """
         Early stop criterion for convergence test.
         """
-        if len(self._loss_history) >= self.window:
-            return np.allclose(
-                self._loss_history[-self.window :],
-                self._loss_history[-1],
-                atol=self._loss_history[-1] / 20,
-            )
+        history = self._loss_history
+        window = self.window
+        tolerance = 2.5e-2 # 2.5%
+        if len(history) >= window:
+            return (
+                np.array([abs(history[-1] - el) for el in history[-window:]])
+                < np.array([tolerance * history[-1]] * window)
+            ).all()
+            # return np.allclose(
+            #     self._loss_history[-self.window :],
+            #     self._loss_history[-1],
+            #     atol=self._loss_history[-1] / 10,
+            # )
         else:
             return False
 
@@ -65,43 +79,57 @@ class EarlyStopper:
         """
         Early stop criterion for convergence test.
         """
+        history = self._loss_history
+        window = self.window
+        tolerance = 2.5e-2 # 2.5%
         if len(self._loss_history) >= 2 * self.window:
             if np.ptp(self._loss_history[-self.window :]) > (
                 1.0 + self.max_amplitude
             ) * np.max(self._loss_history[-2 * self.window : -self.window]):
                 return False
             else:
-                return np.isclose(
-                    np.mean(self._loss_history[-self.window :]),
-                    np.mean(self._loss_history[-2 * self.window : -self.window]),
-                    atol=self._loss_history[-1] / 20,
-                )
+                return abs(
+                    np.mean(history[-window:]) - np.mean(history[-2 * window : -window])
+                ) < tolerance * np.mean(history[-window:])
         else:
             return False
 
     def __check_early_stop(self):
         if self.__earlyStopCriterionMin() or self.__earlyStopCriterionSat():
+            if not self._early_stop:
+                print("Early stopping due to absolute convergence.") if self.__earlyStopCriterionMin() else print(
+                    "Early stopping due to saturation."
+                )
             return True
         else:
             return False
 
     def update(self, validation_loss):
-        if self._early_stop:
-            return
-        self.step(validation_loss)
+        if not self._early_stop:
+            self._early_stop = self.step(validation_loss)
+            print("Early stopping activated.") if self._early_stop else None
         
     def step(self, validation_loss):
         self.loss_history_append(validation_loss)
+        flag = False
         if validation_loss < self.min_validation_loss:
             self.min_validation_loss = validation_loss
-            if self.check_early_stop():
-                pass
-            else:
-                self.counter = 0
+            if not self.__check_early_stop():
+                self.reset_counter()
         elif self.__check_early_stop():
-            self.counter += 1
+            flag = self.increase_counter()
         elif validation_loss > (self.min_validation_loss + self.min_delta):
-            self.counter += 1
-            if self.counter >= self.patience:
-                return True
+            flag = self.increase_counter()
+        return flag
+
+    def reset_counter(self):
+        print("Early stopping counter reset.") if self.counter > 0 else None
+        self.counter = 0
+        
+    def increase_counter(self):
+        self.counter += 1
+        print("Early stopping counter: ", self.counter)
+        if self.counter >= self.patience:
+            print()
+            return True
         return False
