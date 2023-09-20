@@ -3,14 +3,18 @@ import torch
 from trustworthyAI.gcastle.castle.common.base import Tensor
 # inspired by answers on : https://stackoverflow.com/questions/71998978/early-stopping-in-pytorch
 
+EARLYSTOPPING = False
 
 class EarlyStopper:
-    def __init__(self, patience=1, min_delta=0, window=10, max_amplitude=1e-3):
-        self.reset(patience, min_delta, window, max_amplitude)
+    def __init__(self, patience=1, min_delta=0, window=100, max_amplitude=1e-3, tolerance=2.5e-2):
+        if not EARLYSTOPPING:
+            self._allowed = False
+        self.reset(patience, min_delta, window, max_amplitude, tolerance)
 
-    def reset(self, patience=1, min_delta=0, window=10, max_amplitude=1e-3):
+    def reset(self, patience=1, min_delta=0, window=10, max_amplitude=1e-3, tolerance=2.5e-2):
         self.patience : int = patience
         self.min_delta : float = min_delta
+        self.tolerance : float = tolerance
         self.counter : int = 0
         self.min_validation_loss : float = np.inf
         self._early_stop : bool = False
@@ -23,6 +27,8 @@ class EarlyStopper:
         return f"EarlyStopper(patience={self.patience}, min_delta={self.min_delta}, window={self.window}, max_amplitude={self.max_amplitude})"
     
     def __call__(self, validation_loss):
+        if not EARLYSTOPPING:
+            return None
         if not isinstance(validation_loss, float):
             if isinstance(validation_loss, (np.ndarray, list)):
                 raise NotImplementedError("EarlyStopper does not yet support np.ndarray or list")
@@ -38,6 +44,8 @@ class EarlyStopper:
 
     @property
     def early_stop(self):
+        if not EARLYSTOPPING:
+            return False
         return self._early_stop
 
     @property
@@ -61,7 +69,7 @@ class EarlyStopper:
         """
         history = self._loss_history
         window = self.window
-        tolerance = 2.5e-2 # 2.5%
+        tolerance = self.tolerance
         if len(history) >= window:
             return (
                 np.array([abs(history[-1] - el) for el in history[-window:]])
@@ -81,13 +89,13 @@ class EarlyStopper:
         """
         history = self._loss_history
         window = self.window
-        tolerance = 2.5e-2 # 2.5%
+        tolerance = self.tolerance
         if len(self._loss_history) >= 2 * self.window:
-            if np.ptp(self._loss_history[-self.window :]) > (
-                1.0 + self.max_amplitude
-            ) * np.max(self._loss_history[-2 * self.window : -self.window]):
-                return False
-            else:
+            # if np.ptp(self._loss_history[-self.window :]) > (
+            #     1.0 + self.max_amplitude
+            # ) * np.max(self._loss_history[-2 * self.window : -self.window]):
+            #     return False
+            # else:
                 return abs(
                     np.mean(history[-window:]) - np.mean(history[-2 * window : -window])
                 ) < tolerance * np.mean(history[-window:])

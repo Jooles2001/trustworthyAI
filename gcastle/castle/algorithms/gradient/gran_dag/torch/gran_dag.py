@@ -249,7 +249,7 @@ class GraNDAG(BaseLearner):
         self.square_prod = square_prod
         # ===== @Jules: EarlyStopping =====
         from trustworthyAI.gcastle.castle.algorithms.gradient.early_stop import EarlyStopper
-        self.early_stopper = EarlyStopper(patience=8, min_delta=0.0)
+        # self.early_stopper = EarlyStopper(patience=8, min_delta=0.0)
 
     def learn(self, data, columns=None, **kwargs):
         """Set up and run the Gran-DAG algorithm
@@ -371,6 +371,9 @@ class GraNDAG(BaseLearner):
         w_adjs = np.zeros((self.iterations,
                            self.input_dim,
                            self.input_dim), dtype=np.float32)
+        # ============ Jules' modification ============
+        dags = w_adjs.copy()
+        # =============================================
 
         hs = []
         not_nlls = []  # Augmented Lagrangian minus (pseudo) NLL
@@ -391,8 +394,8 @@ class GraNDAG(BaseLearner):
             raise NotImplementedError("optimizer {} is not implemented"
                                       .format(self.optimizer))
         # ============ Jules' modification ============
-        loss_history = [] # redundant
-        adjacency_history = [] # redundant
+        # loss_history = [] # redundant
+        # adjacency_history = [] # redundant
         # =============================================
         # Learning loop:
         for iter in tqdm(range(self.iterations), desc='Training Iterations'):
@@ -426,6 +429,12 @@ class GraNDAG(BaseLearner):
 
             # logging
             w_adjs[iter, :, :] = w_adj.detach().cpu().numpy().astype(np.float32)
+            # ============ Jules' modification ============
+            current_adj = self.model.adjacency.detach().cpu().numpy().astype(np.float32)
+            self._to_dag(train_data) # this (unfortunately) modifies the adjacency matrix
+            dags[iter, :, :] = self.model.adjacency.detach().cpu().numpy().astype(np.float32)
+            self.model.adjacency.copy_(torch.Tensor(current_adj))
+            # =============================================
             mus.append(mu)
             lambdas.append(lamb)
             not_nlls.append(0.5 * mu * h.item() ** 2 + lamb * h.item())
@@ -450,7 +459,7 @@ class GraNDAG(BaseLearner):
                     nlls_val.append(loss_val.item())
                     aug_lagrangians_val.append([iter, loss_val + not_nlls[-1]])
                 # ============ Jules' modification ============
-                self.early_stopper(loss_val + not_nlls[-1])
+                # self.early_stopper(loss_val + not_nlls[-1])
                 # =============================================
                 
             # compute delta for lambda
@@ -504,9 +513,10 @@ class GraNDAG(BaseLearner):
             # ============ Jules' modification ============
             self.loss_history = aug_lagrangians  # the loss history is the augmented lagrangian if I understand correctly
             self.adjacency_history = w_adjs  # not exactly the adjacency since there is a `_to_dag` step after (which is not included here)
-            if self.early_stopper.early_stop:
-                print("Early stopping")
-                break
+            self.dag_history = dags # the adjacency after `_to_dag` step
+            # if self.early_stopper.early_stop:
+            #     print("Early stopping")
+            #     break
             # =============================================
 
     def _to_dag(self, train_data):
@@ -535,6 +545,7 @@ class GraNDAG(BaseLearner):
             thresholds = np.unique(A)
             epsilon = 1e-8
             for step, t in enumerate(thresholds):
+                logging.info("step: {}".format(step)) # @Jules: I added this
                 to_keep = torch.Tensor(A > t + epsilon)
                 new_adj = self.model.adjacency * to_keep
                 if is_acyclic(new_adj, device=self.device):

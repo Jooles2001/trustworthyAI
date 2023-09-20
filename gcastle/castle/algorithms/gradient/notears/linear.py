@@ -93,7 +93,7 @@ class Notears(BaseLearner):
         # ====== Jules' modification ======
         self.tracking = True # NOTE: change to instance variable
         from trustworthyAI.gcastle.castle.algorithms.gradient.early_stop import EarlyStopper
-        self.early_stopper = EarlyStopper(patience=5, min_delta=1e-4)
+        # self.early_stopper = EarlyStopper(patience=5, min_delta=1e-4)
         # =================================
 
     def learn(self, data, columns=None, **kwargs):
@@ -211,6 +211,7 @@ class Notears(BaseLearner):
         # =======================================
         for i in range(max_iter):
             w_new, h_new = None, None
+            logging.info('iter {}'.format(i)) # Jules' modification
             while rho < rho_max:
                 sol = sopt.minimize(_func, w_est, method='L-BFGS-B', 
                                     jac=True, bounds=bnds)
@@ -219,7 +220,7 @@ class Notears(BaseLearner):
                 # ==========Jules' modification==========
                 loss_new = _func(w_est)[0].item()
                 loss_history.append(loss_new)
-                self.early_stopper(loss_new)
+                # self.early_stopper(loss_new)
                 adj_history.append(_adj(w_est))
                 # =======================================
                 logging.info(
@@ -236,9 +237,9 @@ class Notears(BaseLearner):
             if h <= h_tol or rho >= rho_max:
                 break
             # ==========Jules' modification==========
-            if self.early_stopper.early_stop:
-                logging.info('Early stopping at iteration {}'.format(i))
-                break
+            # if self.early_stopper.early_stop:
+            #     logging.info('Early stopping at iteration {}'.format(i))
+            #     break
             # =======================================
         W_est = _adj(w_est)
 

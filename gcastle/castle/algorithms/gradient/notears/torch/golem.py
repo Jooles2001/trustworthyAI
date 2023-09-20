@@ -132,7 +132,7 @@ class GOLEM(BaseLearner):
         self.device = device
         # ==================== #
         from trustworthyAI.gcastle.castle.algorithms.gradient.early_stop import EarlyStopper
-        self.early_stopper = EarlyStopper(patience=5, min_delta=1e-4)
+        # self.early_stopper = EarlyStopper(patience=5, min_delta=1e-4)
         # ==================== #
 
     def learn(self, data, columns=None, **kwargs):
@@ -232,10 +232,10 @@ class GOLEM(BaseLearner):
                 logging.info("[Iter {}] score={:.3f}, likelihood={:.3f}, h={:.1e}".format( \
                     i, score, likelihood, h))
                 
-            self.early_stopper(score.item())
-            if self.early_stopper.early_stop:
-                print("Early stopping at iteration {}.".format(i))
-                break
+            # self.early_stopper(score.item())
+            # if self.early_stopper.early_stop:
+            #     print("Early stopping at iteration {}.".format(i))
+            #     break
 
         # Post-process estimated solution and compute results
         B_processed = postprocess(B_est.cpu().detach().numpy(), graph_thres=0.3)
