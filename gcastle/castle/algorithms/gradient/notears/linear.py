@@ -116,9 +116,10 @@ class Notears(BaseLearner):
                                     h_tol=self.h_tol, 
                                     rho_max=self.rho_max)
         # ====== Jules' modification ======
-        W_est, loss_hist, adj_hist = W_est
-        self.loss_history = loss_hist
-        self.adjacency_history = adj_hist
+        ### NOTE: this is the original code, but we will switch to instantly update the attributes
+        # W_est, loss_hist, adj_hist = W_est
+        # self.loss_history = loss_hist
+        # self.adjacency_history = adj_hist
         # =================================
         causal_matrix = (abs(W_est) > self.w_threshold).astype(int)
         self.weight_causal_matrix = Tensor(W_est,
@@ -208,10 +209,11 @@ class Notears(BaseLearner):
         # ==========Jules' modification==========
         loss_history : list = []
         adj_history : list = []
+        dag_history : list = []
         # =======================================
         for i in range(max_iter):
             w_new, h_new = None, None
-            logging.info('iter {}'.format(i)) # Jules' modification
+            # logging.info('Notears iter {}'.format(i)) # Jules' modification
             while rho < rho_max:
                 sol = sopt.minimize(_func, w_est, method='L-BFGS-B', 
                                     jac=True, bounds=bnds)
@@ -222,6 +224,7 @@ class Notears(BaseLearner):
                 loss_history.append(loss_new)
                 # self.early_stopper(loss_new)
                 adj_history.append(_adj(w_est))
+                dag_history.append((abs(_adj(w_est)) > self.w_threshold).astype(int))
                 # =======================================
                 logging.info(
                     '[iter {}] h={:.3e}, loss={:.3f}, rho={:.1e}'.format( \
@@ -246,6 +249,9 @@ class Notears(BaseLearner):
         logging.info('FINISHED')
         # ==========Jules' modification==========
         if self.tracking:
-            return W_est, loss_history, adj_history
+            self.loss_history = np.array(loss_history)
+            self.adjacency_history = np.array(adj_history)
+            self.dag_history = np.array(dag_history)
+            # return W_est, loss_history, adj_history, dag_history
         # =======================================
         return W_est

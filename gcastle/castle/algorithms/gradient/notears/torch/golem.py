@@ -210,16 +210,19 @@ class GOLEM(BaseLearner):
         # ================Jules' modification================
         loss_history = []
         adjacency_history = []
+        dag_history = []
         # ===================================================
         logging.info("Started training for {} iterations.".format(int(self.num_iter)))
         for i in range(0, int(self.num_iter) + 1):
             model(X)
             score, likelihood, h, B_est = model.score, model.likelihood, model.h, model.B
             # ================Jules' modification================
-            print(f"[Iter {i}] score={score:.3f}, likelihood={likelihood:.3f}, h={h:.1e}") if i%5_000==0 else None # verbose
+            logging.info(f"[Iter {i}] score={score:.3f}, likelihood={likelihood:.3f}, h={h:.1e}") if i%5_000==0 else None # verbose
             loss_history.append(score.item())
-            adj_matrix = postprocess(B_est.cpu().detach().numpy(), graph_thres=0.3)
+            adj_matrix = postprocess(B_est.cpu().detach().numpy(), graph_thres=self.graph_thres)
             adjacency_history.append(adj_matrix)
+            est_causal_matrix = (adj_matrix != 0).astype(int)
+            dag_history.append(est_causal_matrix)
             # ===================================================
             if i > 0:  # Do not train here, only perform evaluation
                 # Optimizer
@@ -243,5 +246,6 @@ class GOLEM(BaseLearner):
         # ================Jules' modification================
         self.loss_history = loss_history
         self.adjacency_history = adjacency_history
+        self.dag_history = dag_history
         # ===================================================
         return B_result

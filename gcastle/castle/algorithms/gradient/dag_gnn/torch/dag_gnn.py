@@ -238,11 +238,12 @@ class DAG_GNN(BaseLearner):
         ################################
         elbo_loss_history = []
         adj_A_history = []
+        dag_history = []
         ################################
         for step_k in range(self.k_max_iter):
-            print("="*20, f"step_k: {step_k}", "="*20) if step_k%10==0 else None
+            # print("="*20, f"step_k: {step_k}", "="*20) if step_k%10==0 else None
             while c_a < self.c_a_thresh:
-                print(f"lambda_a: {lambda_a}, c_a: {c_a}")
+                # print(f"lambda_a: {lambda_a}, c_a: {c_a}")
                 for epoch in range(self.epochs):
                     elbo_loss, origin_a = self._train(train_loader=train_loader,
                                                       optimizer=optimizer,
@@ -252,9 +253,13 @@ class DAG_GNN(BaseLearner):
                     # @Jules: Adding loss tracking #
                     ################################
                     elbo_loss_history.append(elbo_loss)
-                    print(f"Epoch: {epoch}, elbo_loss: {elbo_loss}") if epoch%25==0 else None
+                    # print(f"Epoch: {epoch}, elbo_loss: {elbo_loss}") if epoch%25==0 else None
                     adj_A_history.append(origin_a.detach().cpu().numpy())
-                    self.early_stopper(elbo_loss)
+                    estimated_dag = origin_a.detach().cpu().numpy()
+                    estimated_dag[np.abs(estimated_dag) < self.graph_threshold] = 0
+                    estimated_dag[np.abs(estimated_dag) >= self.graph_threshold] = 1
+                    dag_history.append(estimated_dag)
+                    # self.early_stopper(elbo_loss)
                     ################################
                     if elbo_loss < best_elbo_loss:
                         best_elbo_loss = elbo_loss
@@ -277,9 +282,9 @@ class DAG_GNN(BaseLearner):
             if h_a_old <= self.h_tolerance:
                 break
             # ===== @Jules: add early stop =====
-            if self.early_stopper.early_stop:
-                print("Early stopping at iteration", step_k)
-                break
+            # if self.early_stopper.early_stop:
+            #     print("Early stopping at iteration", step_k)
+            #     break
             # ==================================
         origin_a = origin_a.detach().cpu().numpy()
         origin_a[np.abs(origin_a) < self.graph_threshold] = 0
@@ -290,6 +295,7 @@ class DAG_GNN(BaseLearner):
         ################################
         self.loss_history = elbo_loss_history
         self.adjacency_history = adj_A_history
+        self.dag_history = dag_history
         ################################
         self.causal_matrix = Tensor(origin_a, index=columns, columns=columns)
 
